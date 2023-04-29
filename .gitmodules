@@ -1,0 +1,3 @@
+[submodule "ldtkimport"]
+	path = ldtkimport
+	url = https://github.com/AnomalousUnderdog/ldtkimport
