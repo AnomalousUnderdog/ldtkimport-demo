@@ -342,7 +342,6 @@ int main()
    std::vector<CellInfo> cellInfo;
    cellInfo.reserve(4);
    sf::Sprite tile;
-   bool validCellPos;
 
    while (window.isOpen())
    {
@@ -361,186 +360,185 @@ int main()
 #endif
                      level, RandomizeSeeds | FasterStampBreakOnMatch);
                }
-               break;
-            }
+            } // fall through so that new random generated level will also refresh diagnostic info
             case sf::Event::MouseButtonPressed:
             {
+               mousePos = sf::Mouse::getPosition(window);
+
+               // don't update mouse cell position if triggered by random generation keypress
+               if (event.type != sf::Event::KeyPressed && mousePos.x < levelPixelWidth && mousePos.y < levelPixelHeight)
+               {
+                  cellPos.x = mousePos.x / cellPixelSize;
+                  cellPos.y = mousePos.y / cellPixelSize;
+               }
+
                std::stringstream mouseInfoString;
                mouseInfoString << "Mouse Pos: " << mousePos.x << ", " << mousePos.y << std::endl;
                mouseInfoString << "Cell Pos: " << cellPos.x << ", " << cellPos.y << std::endl;
 
-               if (validCellPos)
+               clickedCell.setPosition(cellPos.x * cellPixelSize, cellPos.y * cellPixelSize);
+
+               cellInfo.clear();
+               int lineCount = 0;
+
+               // --------------------------------------
+               // Get the IntGridValue of the cell
+
+               const auto &intGrid = level.getIntGrid();
+               const auto intGridValueAtCell = intGrid(cellPos.x, cellPos.y);
+               const ldtkimport::IntGridValue *intGridValueDef = nullptr;
+
+               // Note: I hardcode to layer index 2 because I know that's where the intgrid is in the ldtk file for this demo.
+               // TODO: I should add the layer def uid to the IntGrid
+               if (demoLdtk.ldtk.getLayer(2).getIntGridValue(intGridValueAtCell, intGridValueDef))
                {
-                  clickedCell.setPosition(cellPos.x * cellPixelSize, cellPos.y * cellPixelSize);
+                  mouseInfoString << "IntGridValue: " << intGridValueAtCell << " " << intGridValueDef->name << std::endl;
+               }
+               else
+               {
+                  mouseInfoString << "IntGridValue: " << intGridValueAtCell << std::endl;
+               }
+               mouseInfoText.setString(mouseInfoString.str());
 
-                  cellInfo.clear();
-                  int lineCount = 0;
+               // --------------------------------------
 
-                  // --------------------------------------
-                  // Get the IntGridValue of the cell
+               std::stringstream cellInfoString;
 
-                  const auto &intGrid = level.getIntGrid();
-                  const auto intGridValueAtCell = intGrid(cellPos.x, cellPos.y);
-                  const ldtkimport::IntGridValue *intGridValueDef = nullptr;
+               // TileGrids store the results of the rule pattern matching process.
+               // They correspond to each Layer in a LdtkDefFile.
+               for (int tileGridIdx = 0, tileGridEnd = level.getTileGridCount(); tileGridIdx < tileGridEnd; ++tileGridIdx)
+               {
+                  const auto &tileGrid = level.getTileGrid(tileGridIdx);
 
-                  // Note: I hardcode to layer index 2 because I know that's where the intgrid is in the ldtk file for this demo.
-                  // TODO: I should add the layer def uid to the IntGrid
-                  if (demoLdtk.ldtk.getLayer(2).getIntGridValue(intGridValueAtCell, intGridValueDef))
+                  const auto &tiles = tileGrid(cellPos.x, cellPos.y);
+                  if (tiles.size() == 0)
                   {
-                     mouseInfoString << "IntGridValue: " << intGridValueAtCell << " " << intGridValueDef->name << std::endl;
+                     continue;
                   }
-                  else
+
+#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
+                  const auto &tileGridLog = rulesLog.tileGrid[tileGridIdx];
+                  const auto &rulesInCell = tileGridLog[ldtkimport::GridUtility::getIndex(cellPos.x, cellPos.y, tileGrid.getWidth())];
+#endif
+
+                  const TileSetImage *tilesetImage = nullptr;
+
+                  // Get the Layer that corresponds to this TileGrid, so we can display the Layer name.
+                  // Normally the order of layers match the order of tilegrids,
+                  // but to be safe we get by Layer Uid.
+                  const ldtkimport::Layer *layer = nullptr;
+                  if (demoLdtk.ldtk.getLayer(tileGrid.getLayerUid(), layer))
                   {
-                     mouseInfoString << "IntGridValue: " << intGridValueAtCell << std::endl;
-                  }
-                  mouseInfoText.setString(mouseInfoString.str());
+                     cellInfoString << layer->name << ": " << tiles.size() << std::endl;
 
-                  cellInfoText.setPosition(levelPixelWidth + 75, mouseInfoText.getLocalBounds().height + 5);
+                     ldtkimport::TileSet *tileset = nullptr;
+                     if (!demoLdtk.ldtk.getTileset(layer->tilesetDefUid, tileset))
+                     {
+                        continue;
+                     }
+                     // be extra sure
+                     ASSERT(tileset != nullptr, "result arg of getTileset should not be null if return value is true");
 
-                  // --------------------------------------
-
-                  std::stringstream cellInfoString;
-
-                  // TileGrids store the results of the rule pattern matching process.
-                  // They correspond to each Layer in a LdtkDefFile.
-                  for (int tileGridIdx = 0, tileGridEnd = level.getTileGridCount(); tileGridIdx < tileGridEnd; ++tileGridIdx)
-                  {
-                     const auto &tileGrid = level.getTileGrid(tileGridIdx);
-
-                     const auto &tiles = tileGrid(cellPos.x, cellPos.y);
-                     if (tiles.size() == 0)
+                     if (demoLdtk.tilesetImages.count(tileset->uid) == 0)
                      {
                         continue;
                      }
 
-#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
-                     const auto &tileGridLog = rulesLog.tileGrid[tileGridIdx];
-                     const auto &rulesInCell = tileGridLog[ldtkimport::GridUtility::getIndex(cellPos.x, cellPos.y, tileGrid.getWidth())];
-#endif
-
-                     const TileSetImage *tilesetImage = nullptr;
-
-                     // Get the Layer that corresponds to this TileGrid, so we can display the Layer name.
-                     // Normally the order of layers match the order of tilegrids,
-                     // but to be safe we get by Layer Uid.
-                     const ldtkimport::Layer *layer = nullptr;
-                     if (demoLdtk.ldtk.getLayer(tileGrid.getLayerUid(), layer))
-                     {
-                        cellInfoString << layer->name << ": " << tiles.size() << std::endl;
-
-                        ldtkimport::TileSet *tileset = nullptr;
-                        if (!demoLdtk.ldtk.getTileset(layer->tilesetDefUid, tileset))
-                        {
-                           continue;
-                        }
-                        // be extra sure
-                        ASSERT(tileset != nullptr, "result arg of getTileset should not be null if return value is true");
-
-                        if (demoLdtk.tilesetImages.count(tileset->uid) == 0)
-                        {
-                           continue;
-                        }
-
-                        tilesetImage = &demoLdtk.tilesetImages[tileset->uid];
-                     }
-                     else
-                     {
-                        // Can't find Layer for this TileGrid, so just display the TileGrid index.
-                        cellInfoString << "TileGrid " << tileGridIdx << ": " << tiles.size() << std::endl;
-                     }
-
-                     ++lineCount;
-
-#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
-                     ASSERT(rulesInCell.size() == tiles.size(),
-                     "rulesInCell size should match tiles size. rulesInCell.size(): " << rulesInCell.size() << " tiles.size(): " << tiles.size() <<
-                     " at (" << cellPos.x << ", " << cellPos.y << ")");
-#endif
-
-                     for (int tileIdx = 0, tileEnd = tiles.size(); tileIdx < tileEnd; ++tileIdx)
-                     {
-                        const auto &tile = tiles[tileIdx];
-
-                        cellInfo.push_back(CellInfo{tilesetImage, sf::Vector2f(levelPixelWidth + 20, cellInfoText.getPosition().y + (lineCount * 15)), tile});
-
-                        cellInfoString << (tileIdx+1) << ") Tile Id " << tile.tileId << std::endl;
-
-#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
-                        cellInfoString << "   Rule Uid: " << rulesInCell[tileIdx] << std::endl;
-                        ++lineCount;
-
-                        const ldtkimport::RuleGroup *ruleGroup;
-                        if (demoLdtk.ldtk.getRuleGroupOfRule(rulesInCell[tileIdx], ruleGroup))
-                        {
-                           cellInfoString << "   RuleGroup: " << ruleGroup->name << std::endl;
-                           ++lineCount;
-                        }
-#endif
-                        cellInfoString << "   Priority: " << +(tile.priority) << std::endl;
-
-                        // --------------------------------------
-
-                        cellInfoString << "   Offsets:";
-                        if (tile.hasOffsetUp())
-                        {
-                           cellInfoString << " up";
-                        }
-                        else if (tile.hasOffsetDown())
-                        {
-                           cellInfoString << " down";
-                        }
-
-                        if (tile.hasOffsetLeft())
-                        {
-                           cellInfoString << " left";
-                        }
-                        else if (tile.hasOffsetRight())
-                        {
-                           cellInfoString << " right";
-                        }
-                        cellInfoString << std::endl;
-
-                        // --------------------------------------
-
-                        cellInfoString << "   Flipped:";
-                        if (tile.isFlippedX())
-                        {
-                           cellInfoString << " X";
-                        }
-                        if (tile.isFlippedY())
-                        {
-                           cellInfoString << " Y";
-                        }
-                        cellInfoString << std::endl;
-
-                        // --------------------------------------
-
-                        lineCount += 4;
-
-                        if (tile.isFinal())
-                        {
-                           cellInfoString << "   Final" << std::endl;
-                           ++lineCount;
-                        }
-                        cellInfoString << std::endl;
-                        ++lineCount;
-                     }
+                     tilesetImage = &demoLdtk.tilesetImages[tileset->uid];
+                  }
+                  else
+                  {
+                     // Can't find Layer for this TileGrid, so just display the TileGrid index.
+                     cellInfoString << "TileGrid " << tileGridIdx << ": " << tiles.size() << std::endl;
                   }
 
-                  cellInfoText.setString(cellInfoString.str());
+                  ++lineCount;
+
+#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
+                  ASSERT(rulesInCell.size() == tiles.size(),
+                  "rulesInCell size should match tiles size. rulesInCell.size(): " << rulesInCell.size() << " tiles.size(): " << tiles.size() <<
+                  " at (" << cellPos.x << ", " << cellPos.y << ")");
+#endif
+
+                  for (int tileIdx = 0, tileEnd = tiles.size(); tileIdx < tileEnd; ++tileIdx)
+                  {
+                     const auto &tile = tiles[tileIdx];
+
+                     cellInfo.push_back(CellInfo{tilesetImage, sf::Vector2f(levelPixelWidth + 20, cellInfoText.getPosition().y + (lineCount * 15)), tile});
+
+                     cellInfoString << (tileIdx+1) << ") Tile Id " << tile.tileId << std::endl;
+
+#if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
+                     cellInfoString << "   Rule Uid: " << rulesInCell[tileIdx] << std::endl;
+                     ++lineCount;
+
+                     const ldtkimport::RuleGroup *ruleGroup;
+                     if (demoLdtk.ldtk.getRuleGroupOfRule(rulesInCell[tileIdx], ruleGroup))
+                     {
+                        cellInfoString << "   RuleGroup: " << ruleGroup->name << std::endl;
+                        ++lineCount;
+                     }
+#endif
+                     cellInfoString << "   Priority: " << +(tile.priority) << std::endl;
+
+                     // --------------------------------------
+
+                     cellInfoString << "   Offsets:";
+                     if (tile.hasOffsetUp())
+                     {
+                        cellInfoString << " up";
+                     }
+                     else if (tile.hasOffsetDown())
+                     {
+                        cellInfoString << " down";
+                     }
+
+                     if (tile.hasOffsetLeft())
+                     {
+                        cellInfoString << " left";
+                     }
+                     else if (tile.hasOffsetRight())
+                     {
+                        cellInfoString << " right";
+                     }
+                     cellInfoString << std::endl;
+
+                     // --------------------------------------
+
+                     cellInfoString << "   Flipped:";
+                     if (tile.isFlippedX())
+                     {
+                        cellInfoString << " X";
+                     }
+                     if (tile.isFlippedY())
+                     {
+                        cellInfoString << " Y";
+                     }
+                     cellInfoString << std::endl;
+
+                     // --------------------------------------
+
+                     lineCount += 4;
+
+                     if (tile.isFinal())
+                     {
+                        cellInfoString << "   Final" << std::endl;
+                        ++lineCount;
+                     }
+                     cellInfoString << std::endl;
+                     ++lineCount;
+                  }
                }
+
+               cellInfoText.setString(cellInfoString.str());
             }
             case sf::Event::MouseMoved:
             {
                mousePos = sf::Mouse::getPosition(window);
 
-               validCellPos = mousePos.x < levelPixelWidth && mousePos.y < levelPixelHeight;
-               if (validCellPos)
+               if (mousePos.x < levelPixelWidth && mousePos.y < levelPixelHeight)
                {
-                  cellPos.x = mousePos.x / cellPixelSize;
-                  cellPos.y = mousePos.y / cellPixelSize;
-
-                  hoveredCell.setPosition(cellPos.x * cellPixelSize, cellPos.y * cellPixelSize);
+                  hoveredCell.setPosition((mousePos.x / cellPixelSize) * cellPixelSize, (mousePos.y / cellPixelSize) * cellPixelSize);
                }
                break;
             }
