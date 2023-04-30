@@ -23,17 +23,23 @@ struct LdtkAssets
    std::unordered_map<ldtkimport::uid_t, TileSetImage> tilesetImages;
    sf::Sprite sprite;
 
-   void load(
+   bool load(
 #if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
       ldtkimport::RulesLog &rulesLog,
 #endif
       std::string filename)
    {
-      ldtk.loadFromFile(
+      bool loadSuccess = ldtk.loadFromFile(
 #if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
          rulesLog,
 #endif
          filename.c_str(), false);
+
+      if (!loadSuccess)
+      {
+         std::cerr << "Could not load: " << filename << std::endl;
+         return false;
+      }
 
       // Create TileSetImage for each tileset in the ldtkFile,
       // go through each active rule,
@@ -65,7 +71,7 @@ struct LdtkAssets
          if (!tileSetImage.image.loadFromFile(imagePath))
          {
             std::cerr << "Failed to load: " << imagePath << std::endl;
-            return;
+            return false;
          }
 
          tilesetImages.insert(std::make_pair(tileset->uid, tileSetImage));
@@ -219,11 +225,17 @@ int main()
    ldtkimport::RulesLog rulesLog;
 #endif
    LdtkAssets demoLdtk;
-   demoLdtk.load(
+
+   bool loadSuccess = demoLdtk.load(
 #if !defined(NDEBUG) && LDTK_IMPORT_DEBUG_RULE > 0
       rulesLog,
 #endif
       "assets/Demo.ldtk");
+
+   if (!loadSuccess)
+   {
+      return EXIT_FAILURE;
+   }
 
    // I hardcode getting the cell pixel size from the first layer
    // because I know the ldtk file used in this demo has at least 1 layer,
@@ -291,6 +303,7 @@ int main()
    sf::Font font;
    if (!font.loadFromFile("assets/FiraCode-Regular.ttf"))
    {
+      std::cerr << "Could not load: Fira Code font" << std::endl;
       return EXIT_FAILURE;
    }
 
@@ -304,7 +317,12 @@ int main()
    cellInfoText.setPosition(levelPixelWidth + 75, 65);
 
    sf::Texture tileBg;
-   tileBg.loadFromFile("assets/TileBg.png");
+   if (!tileBg.loadFromFile("assets/TileBg.png"))
+   {
+      std::cerr << "Could not load: TileBg.png" << std::endl;
+      return EXIT_FAILURE;
+   }
+   
    sf::Sprite tileBgSprite;
    tileBgSprite.setTexture(tileBg);
 
