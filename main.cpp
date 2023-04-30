@@ -119,10 +119,12 @@ struct LdtkAssets
                   tileset->getCoordinates(tileId, tileX, tileY);
 
                   tilesetImage.tiles.insert(std::make_pair(tileId, sf::IntRect(tileX * cellPixelSize, tileY * cellPixelSize, cellPixelSize, cellPixelSize)));
-               }
-            }
-         }
-      }
+               } // for Tiles
+            } // for Rule
+         } // for RuleGroup
+      } // for Layer
+
+      return true;
    }
 
    void draw(int x, int y, const ldtkimport::Level &level, sf::RenderWindow &window)
