@@ -127,6 +127,48 @@ struct LdtkAssets
       return true;
    }
 
+   void drawTiles(const ldtkimport::tiles_t *tilesToDraw, uint8_t idxToStartDrawing, ldtkimport::dimensions_t cellPixelSize, ldtkimport::dimensions_t cellPixelHalfSize, int x, int y, int cellX, int cellY, TileSetImage &tilesetImage, sf::RenderWindow &window, sf::Sprite &sprite)
+   {
+      for (int tileIdx = idxToStartDrawing; tileIdx >= 0; --tileIdx)
+      {
+         const auto &tile = (*tilesToDraw)[tileIdx];
+         float offsetX = tile.getOffsetX(cellPixelHalfSize);
+         float offsetY = tile.getOffsetY(cellPixelHalfSize);
+         float scaleX;
+         float scaleY;
+         float pivotX;
+         float pivotY;
+
+         if (tile.isFlippedX())
+         {
+            scaleX = -1;
+            pivotX = cellPixelSize;
+         }
+         else
+         {
+            scaleX = 1;
+            pivotX = 0;
+         }
+
+         if (tile.isFlippedY())
+         {
+            scaleY = -1;
+            pivotY = cellPixelSize;
+         }
+         else
+         {
+            scaleY = 1;
+            pivotY = 0;
+         }
+
+         sprite.setTextureRect(tilesetImage.tiles[tile.tileId]);
+         sprite.setPosition(x + (cellX * cellPixelSize) + offsetX, y + (cellY * cellPixelSize) + offsetY);
+         sprite.setOrigin(pivotX, pivotY);
+         sprite.setScale(scaleX, scaleY);
+         window.draw(sprite);
+      }
+   }
+
    void draw(int x, int y, const ldtkimport::Level &level, sf::RenderWindow &window)
    {
       auto cellCountX = level.getWidth();
@@ -156,6 +198,13 @@ struct LdtkAssets
          const auto cellPixelSize = layer.cellPixelSize;
          const float halfGridSize = cellPixelSize * 0.5f;
 
+         /// @todo probably need to do this vertically too (for offset down tiles)
+         const ldtkimport::tiles_t *tilesDelayedDraw = nullptr;
+         uint8_t idxOfDelayedDraw = -1;
+         uint8_t rulePriorityOfDelayedDraw = UINT8_MAX;
+         int cellXOfDelayedDraw;
+         int cellYOfDelayedDraw;
+
          for (int cellY = 0; cellY < cellCountY; ++cellY)
          {
             for (int cellX = 0; cellX < cellCountX; ++cellX)
@@ -164,8 +213,29 @@ struct LdtkAssets
                auto &tiles = tileGrid(cellX, cellY);
 
                // we draw the tiles in reverse
+               uint8_t tileIdx = tiles.size()-1;
                for (auto tile = tiles.crbegin(), tileEnd = tiles.crend(); tile != tileEnd; ++tile)
                {
+                  if (tile->hasOffsetRight())
+                  {
+                     // this tile might need to be drawn on top of the tiles to the right,
+                     // so delay drawing this tile and continue to the next tiles first
+                     tilesDelayedDraw = &tiles;
+                     idxOfDelayedDraw = tileIdx;
+                     rulePriorityOfDelayedDraw = tile->priority;
+                     cellXOfDelayedDraw = cellX;
+                     cellYOfDelayedDraw = cellY;
+                     break;
+                  }
+
+                  if (tilesDelayedDraw != nullptr && cellX != cellXOfDelayedDraw && rulePriorityOfDelayedDraw > tile->priority)
+                  {
+                     // now draw the tiles we delayed drawing
+                     // we'll draw the right-offset'ed tile now (plus other tiles on top of it) since there's a higher priority tile that will come next
+                     drawTiles(tilesDelayedDraw, idxOfDelayedDraw, cellPixelSize, halfGridSize, x, y, cellXOfDelayedDraw, cellYOfDelayedDraw, tilesetImage, window, sprite);
+                     tilesDelayedDraw = nullptr;
+                  }
+
                   float offsetX = tile->getOffsetX(halfGridSize);
                   float offsetY = tile->getOffsetY(halfGridSize);
                   float scaleX;
@@ -200,7 +270,17 @@ struct LdtkAssets
                   sprite.setOrigin(pivotX, pivotY);
                   sprite.setScale(scaleX, scaleY);
                   window.draw(sprite);
+                  --tileIdx;
                } // for tiles
+
+               if (tilesDelayedDraw != nullptr && cellX != cellXOfDelayedDraw && rulePriorityOfDelayedDraw < tiles.front().priority)
+               {
+                  // now draw the tiles we delayed drawing
+                  // now this right-offset'ed tile (plus other tiles on top of it) will be drawn on top of all the tiles just drawn
+                  drawTiles(tilesDelayedDraw, idxOfDelayedDraw, cellPixelSize, halfGridSize, x, y, cellXOfDelayedDraw, cellYOfDelayedDraw, tilesetImage, window, sprite);
+                  tilesDelayedDraw = nullptr;
+               }
+
             } // for cellX
          } // for cellY
       } // for Layer
