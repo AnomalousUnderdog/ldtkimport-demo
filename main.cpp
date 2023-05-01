@@ -565,7 +565,7 @@ int main()
 
                      // --------------------------------------
 
-                     cellInfoString << "   Offsets:";
+                     cellInfoString << "   Half-cell Offsets:";
                      if (tile.hasOffsetUp())
                      {
                         cellInfoString << " up";
@@ -585,6 +585,8 @@ int main()
                      }
                      cellInfoString << std::endl;
 
+                     cellInfoString << "   Pixel Offset: (" << +(tile.posXOffset) << ", " << +(tile.posYOffset) << ")" << std::endl;
+
                      // --------------------------------------
 
                      cellInfoString << "   Flipped:";
@@ -600,7 +602,7 @@ int main()
 
                      // --------------------------------------
 
-                     lineCount += 4;
+                     lineCount += 5;
 
                      if (tile.isFinal())
                      {
