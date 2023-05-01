@@ -218,7 +218,7 @@ struct LdtkAssets
                {
                   if (tile->hasOffsetRight() && (cellX < cellCountX - 1) && tileGrid(cellX + 1, cellY).size() > 0)
                   {
-                     // this tile might need to be drawn on top of the tiles to the right,
+                     // this tile might need to be drawn on top of the tiles to its right,
                      // so delay drawing this tile and continue to the next tiles first
                      tilesDelayedDraw = &tiles;
                      idxOfDelayedDraw = tileIdx;
@@ -276,7 +276,7 @@ struct LdtkAssets
                if (tilesDelayedDraw != nullptr && cellX != cellXOfDelayedDraw && rulePriorityOfDelayedDraw < tiles.front().priority)
                {
                   // now draw the tiles we delayed drawing
-                  // now this right-offset'ed tile (plus other tiles on top of it) will be drawn on top of all the tiles just drawn
+                  // now this right-offset'ed tile (plus other tiles on top of it) will be drawn on top of all the tiles to its right that was just drawn
                   drawTiles(tilesDelayedDraw, idxOfDelayedDraw, cellPixelSize, halfGridSize, x, y, cellXOfDelayedDraw, cellYOfDelayedDraw, tilesetImage, window, sprite);
                   tilesDelayedDraw = nullptr;
                }
@@ -404,7 +404,7 @@ int main()
       std::cerr << "Could not load: TileBg.png" << std::endl;
       return EXIT_FAILURE;
    }
-   
+
    sf::Sprite tileBgSprite;
    tileBgSprite.setTexture(tileBg);
 
