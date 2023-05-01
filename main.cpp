@@ -216,7 +216,7 @@ struct LdtkAssets
                uint8_t tileIdx = tiles.size()-1;
                for (auto tile = tiles.crbegin(), tileEnd = tiles.crend(); tile != tileEnd; ++tile)
                {
-                  if (tile->hasOffsetRight())
+                  if (tile->hasOffsetRight() && (cellX < cellCountX - 1) && tileGrid(cellX + 1, cellY).size() > 0)
                   {
                      // this tile might need to be drawn on top of the tiles to the right,
                      // so delay drawing this tile and continue to the next tiles first
