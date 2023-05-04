@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <iostream>
@@ -129,6 +130,8 @@ struct LdtkAssets
 
    void drawTiles(const ldtkimport::tiles_t *tilesToDraw, uint8_t idxToStartDrawing, ldtkimport::dimensions_t cellPixelSize, ldtkimport::dimensions_t cellPixelHalfSize, int x, int y, int cellX, int cellY, TileSetImage &tilesetImage, sf::RenderWindow &window, sf::Sprite &sprite)
    {
+      sf::Color tileColor(UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
+
       for (int tileIdx = idxToStartDrawing; tileIdx >= 0; --tileIdx)
       {
          const auto &tile = (*tilesToDraw)[tileIdx];
@@ -161,6 +164,8 @@ struct LdtkAssets
             pivotY = 0;
          }
 
+         tileColor.a = static_cast<uint8_t>((tile.opacity / 100.0f) * UINT8_MAX);
+         sprite.setColor(tileColor);
          sprite.setTextureRect(tilesetImage.tiles[tile.tileId]);
          sprite.setPosition(x + (cellX * cellPixelSize) + offsetX, y + (cellY * cellPixelSize) + offsetY);
          sprite.setOrigin(pivotX, pivotY);
@@ -173,6 +178,8 @@ struct LdtkAssets
    {
       auto cellCountX = level.getWidth();
       auto cellCountY = level.getHeight();
+
+      sf::Color tileColor(UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
 
       for (int layerNum = ldtk.getLayerCount(); layerNum > 0; --layerNum)
       {
@@ -265,6 +272,8 @@ struct LdtkAssets
                      pivotY = 0;
                   }
 
+                  tileColor.a = static_cast<uint8_t>((tile->opacity / 100.0f) * UINT8_MAX);
+                  sprite.setColor(tileColor);
                   sprite.setTextureRect(tilesetImage.tiles[tile->tileId]);
                   sprite.setPosition(x + (cellX * cellPixelSize) + offsetX, y + (cellY * cellPixelSize) + offsetY);
                   sprite.setOrigin(pivotX, pivotY);
@@ -562,6 +571,7 @@ int main()
                      }
 #endif
                      cellInfoString << "   Priority: " << +(tile.priority) << std::endl;
+                     cellInfoString << "   Opacity: " << +(tile.opacity) << "%" << std::endl;
 
                      // --------------------------------------
 
@@ -602,7 +612,7 @@ int main()
 
                      // --------------------------------------
 
-                     lineCount += 5;
+                     lineCount += 6;
 
                      if (tile.isFinal())
                      {
@@ -650,6 +660,8 @@ int main()
 
       const float infoCellScale = 3;
 
+      sf::Color tileColor(UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
+
       for (auto c = cellInfo.cbegin(), end = cellInfo.cend(); c != end; ++c)
       {
          tile.setTexture(c->tileSetImage->image);
@@ -677,6 +689,9 @@ int main()
          {
             scaleY = infoCellScale;
          }
+
+         tileColor.a = static_cast<uint8_t>((c->tileInfo.opacity / 100.0f) * UINT8_MAX);
+         tile.setColor(tileColor);
          tile.setTextureRect(c->tileSetImage->tiles.at(c->tileInfo.tileId));
          tile.setPosition(pos);
          tile.setScale(scaleX, scaleY);
