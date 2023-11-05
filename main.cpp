@@ -84,7 +84,7 @@ struct LdtkAssets
       for (auto layer = ldtk.layerCBegin(), layerEnd = ldtk.layerCEnd(); layer != layerEnd; ++layer)
       {
          const ldtkimport::TileSet *tileset = nullptr;
-         if (!ldtk.getTileset(layer->tilesetDefUid, tileset))
+         if ((tileset = ldtk.getTileset(layer->tilesetDefUid)) == nullptr)
          {
             std::cerr << "TileSet " << layer->tilesetDefUid << " was not found in ldtk file" << std::endl;
             continue;
@@ -183,11 +183,11 @@ struct LdtkAssets
 
       for (int layerNum = ldtk.getLayerCount(); layerNum > 0; --layerNum)
       {
-         const auto &layer = ldtk.getLayer(layerNum - 1);
-         const auto &tileGrid = level.getTileGrid(layerNum - 1);
+         const auto &layer = ldtk.getLayerByIdx(layerNum - 1);
+         const auto &tileGrid = level.getTileGridByIdx(layerNum - 1);
 
          ldtkimport::TileSet *tileset = nullptr;
-         if (!ldtk.getTileset(layer.tilesetDefUid, tileset))
+         if ((tileset = ldtk.getTileset(layer.tilesetDefUid)) == nullptr)
          {
             continue;
          }
@@ -481,7 +481,7 @@ int main()
 
                // Note: I hardcode to layer index 2 because I know that's where the intgrid is in the ldtk file for this demo.
                // TODO: I should add the layer def uid to the IntGrid
-               if (demoLdtk.ldtk.getLayer(2).getIntGridValue(intGridValueAtCell, intGridValueDef))
+               if ((intGridValueDef = demoLdtk.ldtk.getLayerByIdx(2).getIntGridValue(intGridValueAtCell)) != nullptr)
                {
                   mouseInfoString << "IntGridValue: " << intGridValueAtCell << " " << intGridValueDef->name << std::endl;
                }
@@ -499,7 +499,7 @@ int main()
                // They correspond to each Layer in a LdtkDefFile.
                for (int tileGridIdx = 0, tileGridEnd = level.getTileGridCount(); tileGridIdx < tileGridEnd; ++tileGridIdx)
                {
-                  const auto &tileGrid = level.getTileGrid(tileGridIdx);
+                  const auto &tileGrid = level.getTileGridByIdx(tileGridIdx);
 
                   const auto &tiles = tileGrid(cellPos.x, cellPos.y);
                   if (tiles.size() == 0)
@@ -518,12 +518,12 @@ int main()
                   // Normally the order of layers match the order of tilegrids,
                   // but to be safe we get by Layer Uid.
                   const ldtkimport::Layer *layer = nullptr;
-                  if (demoLdtk.ldtk.getLayer(tileGrid.getLayerUid(), layer))
+                  if ((layer = &demoLdtk.ldtk.getLayerByIdx(tileGrid.getLayerUid())) != nullptr)
                   {
                      cellInfoString << layer->name << ": " << tiles.size() << std::endl;
 
                      ldtkimport::TileSet *tileset = nullptr;
-                     if (!demoLdtk.ldtk.getTileset(layer->tilesetDefUid, tileset))
+                     if (( tileset = demoLdtk.ldtk.getTileset(layer->tilesetDefUid)) == nullptr)
                      {
                         continue;
                      }
@@ -564,7 +564,7 @@ int main()
                      ++lineCount;
 
                      const ldtkimport::RuleGroup *ruleGroup;
-                     if (demoLdtk.ldtk.getRuleGroupOfRule(rulesInCell[tileIdx], ruleGroup))
+                     if ((ruleGroup = demoLdtk.ldtk.getRuleGroupOfRule(rulesInCell[tileIdx])) != nullptr )
                      {
                         cellInfoString << "   RuleGroup: " << ruleGroup->name << std::endl;
                         ++lineCount;
