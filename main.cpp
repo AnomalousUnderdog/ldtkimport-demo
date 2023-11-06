@@ -518,7 +518,7 @@ int main()
                   // Normally the order of layers match the order of tilegrids,
                   // but to be safe we get by Layer Uid.
                   const ldtkimport::Layer *layer = nullptr;
-                  if ((layer = &demoLdtk.ldtk.getLayerByIdx(tileGrid.getLayerUid())) != nullptr)
+                  if ((layer = demoLdtk.ldtk.getLayerByUid(tileGrid.getLayerUid())) != nullptr)
                   {
                      cellInfoString << layer->name << ": " << tiles.size() << std::endl;
 
